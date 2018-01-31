@@ -45,14 +45,14 @@ public class PhotonController : Photon.PunBehaviour
     private PhotonHashtable roomCustomProperties;
 
     public List<GameObject> prefabs;
-   
-    
+
+
 
     void Start()
     {
         PhotonNetwork.ConnectUsingSettings("v1.0");
-        this.roomCustomProperties = new PhotonHashtable();
-        this.prefabs = new List<GameObject>();
+        roomCustomProperties = new PhotonHashtable();
+        prefabs = new List<GameObject>();
     }
 
     void Update()
@@ -67,7 +67,7 @@ public class PhotonController : Photon.PunBehaviour
     #region Photon Methods
     public override void OnJoinedLobby()
     {
-        this.JoinRoomButton.interactable = true;
+        JoinRoomButton.interactable = true;
     }
 
     public override void OnPhotonRandomJoinFailed(object[] codeAndMsg)
@@ -77,14 +77,14 @@ public class PhotonController : Photon.PunBehaviour
 
     public override void OnJoinedRoom()
     {
-        this.roomCustomProperties = PhotonNetwork.room.CustomProperties;
-        this.StartScreen.SetActive(false);
-        this.GameScreen.SetActive(true);
+        roomCustomProperties = PhotonNetwork.room.CustomProperties;
+        StartScreen.SetActive(false);
+        GameScreen.SetActive(true);
         if (PhotonNetwork.room.PlayerCount == 2)
         {
-            this.WaitingLabel.enabled = false;
-            this.StartButton.interactable = true;
-            this.StartButtonGO.SetActive(true);
+            WaitingLabel.enabled = false;
+            StartButton.interactable = true;
+            StartButtonGO.SetActive(true);
             myName = PLAYER_2;
             otherName = PLAYER_1;
         }
@@ -97,37 +97,40 @@ public class PhotonController : Photon.PunBehaviour
 
     public override void OnPhotonPlayerConnected(PhotonPlayer newPlayer)
     {
-        this.WaitingLabel.enabled = false;
-        this.StartButton.interactable = true;
-        this.StartButtonGO.SetActive(true);
+        WaitingLabel.enabled = false;
+        StartButton.interactable = true;
+        StartButtonGO.SetActive(true);
     }
 
     public override void OnPhotonCustomRoomPropertiesChanged(PhotonHashtable propertiesThatChanged)
     {
         foreach (DictionaryEntry pair in propertiesThatChanged)
         {
-            this.roomCustomProperties[pair.Key] = pair.Value;
+            roomCustomProperties[pair.Key] = pair.Value;
         }
 
-        
+
         if (!String.IsNullOrEmpty(myName))
         {
             SetScore();
         }
 
-        if (!GameStarted && (int)this.roomCustomProperties[PLAYERS_READY] == 2)
+        if (!GameStarted && (int)roomCustomProperties[PLAYERS_READY] == 2)
         {
-            this.Clock.text = GameTime.ToString();
-            this.ClockLabel.SetActive(true);
-            this.PlacarLabel.SetActive(true);
-            this.StartButtonGO.SetActive(false);
-            this.WaitReady.SetActive(false);
+            Clock.text = GameTime.ToString();
+            ClockLabel.SetActive(true);
+            PlacarLabel.SetActive(true);
+            StartButtonGO.SetActive(false);
+            WaitReady.SetActive(false);
 
             blockSpawnCoroutine = InstantateBlock(SpawnTime);
             StartCoroutine(blockSpawnCoroutine);
 
-            PhotonView photonView = PhotonView.Get(this);
-            photonView.RPC("StartClockCountDown", PhotonTargets.All);
+            if (PhotonNetwork.player.ID == 1)
+            {
+                PhotonView photonView = PhotonView.Get(this);
+                photonView.RPC("StartClockCountDown", PhotonTargets.All);
+            }
 
             GameStarted = true;
         }
@@ -135,28 +138,29 @@ public class PhotonController : Photon.PunBehaviour
 
     public override void OnPhotonPlayerDisconnected(PhotonPlayer otherPlayer)
     {
-        StopCoroutine(blockSpawnCoroutine);
-        StopCoroutine(clockCoroutine);
-        PhotonNetwork.LeaveRoom();
+        foreach (GameObject go in prefabs)
+        {
+            Destroy(go);
+        }
+        ExitGame();
     }
 
     public override void OnLeftRoom()
     {
-        foreach (GameObject go in this.prefabs)
-        {
-            Destroy(go);
-        }
-        this.StartScreen.SetActive(true);
-        this.GameScreen.SetActive(false);
+        GameStarted = false;
+        StartScreen.SetActive(true);
+        GameScreen.SetActive(false);
 
-        this.WaitingLabel.enabled = true;
-        this.StartButton.interactable = false;
-        this.StartButtonGO.SetActive(false);
+        WaitingLabel.enabled = true;
+        StartButton.interactable = false;
+        JoinRoomButton.interactable = false;
+        StartButtonGO.SetActive(false);
 
-        this.ClockLabel.SetActive(false);
-        this.PlacarLabel.SetActive(false);
-        this.StartButtonGO.SetActive(false);
-        this.WaitReady.SetActive(false);
+        ClockLabel.SetActive(false);
+        PlacarLabel.SetActive(false);
+        StartButtonGO.SetActive(false);
+        WaitReady.SetActive(false);
+        Finish.SetActive(false);
     }
 
     #endregion
@@ -169,10 +173,10 @@ public class PhotonController : Photon.PunBehaviour
 
     public void ImReady()
     {
-        this.WaitReady.SetActive(true);
-        this.StartButtonGO.SetActive(false);
-        this.roomCustomProperties[PLAYERS_READY] = (int)this.roomCustomProperties[PLAYERS_READY] + 1;
-        PhotonNetwork.room.SetCustomProperties(this.roomCustomProperties);
+        WaitReady.SetActive(true);
+        StartButtonGO.SetActive(false);
+        roomCustomProperties[PLAYERS_READY] = (int)roomCustomProperties[PLAYERS_READY] + 1;
+        PhotonNetwork.room.SetCustomProperties(roomCustomProperties);
     }
 
     public void ExitGame()
@@ -186,15 +190,14 @@ public class PhotonController : Photon.PunBehaviour
     #region Game Flow Methods
     private void SetScore()
     {
-        Debug.Log(myName + "-" + otherName);
-        this.MyScoreLabel.text = this.roomCustomProperties[myName].ToString();
-        this.OtherScoreLabel.text = this.roomCustomProperties[otherName].ToString();
+        MyScoreLabel.text = roomCustomProperties[myName].ToString();
+        OtherScoreLabel.text = roomCustomProperties[otherName].ToString();
     }
 
     public void Point()
     {
-        this.roomCustomProperties[myName] = (int)this.roomCustomProperties[myName] + 1;
-        PhotonNetwork.room.SetCustomProperties(this.roomCustomProperties);
+        roomCustomProperties[myName] = (int)roomCustomProperties[myName] + 1;
+        PhotonNetwork.room.SetCustomProperties(roomCustomProperties);
     }
 
     private void SetupRoom()
@@ -211,19 +214,26 @@ public class PhotonController : Photon.PunBehaviour
 
     private void FinishGame()
     {
-        this.Finish.SetActive(true);
+        foreach (GameObject go in prefabs)
+        {
+            Destroy(go);
+        }
+
+        Finish.SetActive(true);
         StopCoroutine(blockSpawnCoroutine);
         GameStarted = false;
 
-        if ((int) this.roomCustomProperties[myName] > (int) this.roomCustomProperties[otherName])
+        if ((int)roomCustomProperties[myName] > (int)roomCustomProperties[otherName])
         {
-            this.ResultLabel.text = "YOU WIN!";
-        } else if ((int)this.roomCustomProperties[myName] < (int)this.roomCustomProperties[otherName])
+            ResultLabel.text = "YOU WIN!";
+        }
+        else if ((int)roomCustomProperties[myName] < (int)roomCustomProperties[otherName])
         {
-            this.ResultLabel.text = "YOU LOSE!";
-        } else
+            ResultLabel.text = "YOU LOSE!";
+        }
+        else
         {
-            this.ResultLabel.text = "DRAW GAME!";
+            ResultLabel.text = "DRAW GAME!";
         }
 
     }
@@ -263,7 +273,7 @@ public class PhotonController : Photon.PunBehaviour
         while (count > -1)
         {
             yield return new WaitForSeconds(1f);
-            this.Clock.text = count.ToString();
+            Clock.text = count.ToString();
             count--;
         }
         FinishGame();

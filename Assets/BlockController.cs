@@ -2,20 +2,24 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class BlockController : MonoBehaviour {
+public class BlockController : MonoBehaviour
+{
 
-	PhotonController Controller;
+    PhotonController Controller;
 
-	void Start () {
-		Controller = GameObject.Find ("PhotonController").GetComponent<PhotonController>();
-	}
+    void Start()
+    {
+        Controller = GameObject.Find("PhotonController").GetComponent<PhotonController>();
+    }
 
-	void Update () {
-		if (Input.GetMouseButtonDown (0)) {
-			Controller.Point ();
-			Destroy (this.gameObject);
+    void OnMouseDown()
+    {
+        Controller.Point();
+        Destroy(this.gameObject);
+    }
 
-		}
-	}
-
+    void Update()
+    {
+       
+    }
 }

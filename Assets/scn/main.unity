@@ -230,9 +230,9 @@ MonoBehaviour:
   OtherScoreLabel: {fileID: 1410255195}
   Clock: {fileID: 842001613}
   ResultLabel: {fileID: 806279312}
-  SpawnTime: 1
-  LifeTime: 1
-  GameTime: 10
+  SpawnTime: 0.5
+  LifeTime: 2
+  GameTime: 20
   myName: 
   otherName: 
   GameStarted: 0
@@ -566,7 +566,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -59.590508}
+  m_AnchoredPosition: {x: -100, y: -60}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &424045238
@@ -595,7 +595,7 @@ MonoBehaviour:
     m_BestFit: 0
     m_MinSize: 3
     m_MaxSize: 40
-    m_Alignment: 2
+    m_Alignment: 5
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
@@ -1489,7 +1489,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -59.590508}
+  m_AnchoredPosition: {x: 100, y: -59.590508}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1410255195
