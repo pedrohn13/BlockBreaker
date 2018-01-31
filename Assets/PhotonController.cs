@@ -10,6 +10,7 @@ public class PhotonController : Photon.PunBehaviour
 {
     private const string PLAYER_1 = "player1";
     private const string PLAYER_2 = "player2";
+    private const string PLAYERS_READY = "ready";
 
     public GameObject StartScreen;
     public GameObject GameScreen;
@@ -18,6 +19,7 @@ public class PhotonController : Photon.PunBehaviour
     public GameObject ClockLabel;
     public GameObject Prefab;
     public GameObject Finish;
+    public GameObject WaitReady;
 
     public Button JoinRoomButton;
     public Button StartButton;
@@ -26,22 +28,31 @@ public class PhotonController : Photon.PunBehaviour
     public Text MyScoreLabel;
     public Text OtherScoreLabel;
     public Text Clock;
+    public Text ResultLabel;
 
     public float SpawnTime;
     public float LifeTime;
     public int GameTime;
 
+    public string myName;
+    public string otherName;
+
+    public bool GameStarted;
+
     private IEnumerator blockSpawnCoroutine;
+    private IEnumerator clockCoroutine;
 
     private PhotonHashtable roomCustomProperties;
 
-    private string myName;
-    private string otherName;
+    public List<GameObject> prefabs;
+   
+    
 
     void Start()
     {
         PhotonNetwork.ConnectUsingSettings("v1.0");
         this.roomCustomProperties = new PhotonHashtable();
+        this.prefabs = new List<GameObject>();
     }
 
     void Update()
@@ -76,7 +87,8 @@ public class PhotonController : Photon.PunBehaviour
             this.StartButtonGO.SetActive(true);
             myName = PLAYER_2;
             otherName = PLAYER_1;
-        } else
+        }
+        else
         {
             myName = PLAYER_1;
             otherName = PLAYER_2;
@@ -96,20 +108,44 @@ public class PhotonController : Photon.PunBehaviour
         {
             this.roomCustomProperties[pair.Key] = pair.Value;
         }
-        if (myName != null)
+
+        
+        if (!String.IsNullOrEmpty(myName))
         {
             SetScore();
+        }
+
+        if (!GameStarted && (int)this.roomCustomProperties[PLAYERS_READY] == 2)
+        {
+            this.Clock.text = GameTime.ToString();
+            this.ClockLabel.SetActive(true);
+            this.PlacarLabel.SetActive(true);
+            this.StartButtonGO.SetActive(false);
+            this.WaitReady.SetActive(false);
+
+            blockSpawnCoroutine = InstantateBlock(SpawnTime);
+            StartCoroutine(blockSpawnCoroutine);
+
+            PhotonView photonView = PhotonView.Get(this);
+            photonView.RPC("StartClockCountDown", PhotonTargets.All);
+
+            GameStarted = true;
         }
     }
 
     public override void OnPhotonPlayerDisconnected(PhotonPlayer otherPlayer)
     {
         StopCoroutine(blockSpawnCoroutine);
+        StopCoroutine(clockCoroutine);
         PhotonNetwork.LeaveRoom();
     }
 
     public override void OnLeftRoom()
     {
+        foreach (GameObject go in this.prefabs)
+        {
+            Destroy(go);
+        }
         this.StartScreen.SetActive(true);
         this.GameScreen.SetActive(false);
 
@@ -119,7 +155,8 @@ public class PhotonController : Photon.PunBehaviour
 
         this.ClockLabel.SetActive(false);
         this.PlacarLabel.SetActive(false);
-        this.StartButtonGO.SetActive(true);
+        this.StartButtonGO.SetActive(false);
+        this.WaitReady.SetActive(false);
     }
 
     #endregion
@@ -132,22 +169,24 @@ public class PhotonController : Photon.PunBehaviour
 
     public void ImReady()
     {
-        SetScore();
-
-        this.Clock.text = GameTime.ToString();
-        this.ClockLabel.SetActive(true);
-        this.PlacarLabel.SetActive(true);
+        this.WaitReady.SetActive(true);
         this.StartButtonGO.SetActive(false);
+        this.roomCustomProperties[PLAYERS_READY] = (int)this.roomCustomProperties[PLAYERS_READY] + 1;
+        PhotonNetwork.room.SetCustomProperties(this.roomCustomProperties);
+    }
 
-        blockSpawnCoroutine = InstantateBlock(SpawnTime);
-        StartCoroutine(blockSpawnCoroutine);
-        StartCoroutine(StartClock());
+    public void ExitGame()
+    {
+        StopCoroutine(blockSpawnCoroutine);
+        StopCoroutine(clockCoroutine);
+        PhotonNetwork.LeaveRoom();
     }
     #endregion
 
     #region Game Flow Methods
     private void SetScore()
     {
+        Debug.Log(myName + "-" + otherName);
         this.MyScoreLabel.text = this.roomCustomProperties[myName].ToString();
         this.OtherScoreLabel.text = this.roomCustomProperties[otherName].ToString();
     }
@@ -165,6 +204,7 @@ public class PhotonController : Photon.PunBehaviour
         PhotonHashtable customProperties = new PhotonHashtable();
         customProperties[PLAYER_1] = 0;
         customProperties[PLAYER_2] = 0;
+        customProperties[PLAYERS_READY] = 0;
         options.CustomRoomProperties = customProperties;
         PhotonNetwork.CreateRoom("", options, TypedLobby.Default);
     }
@@ -173,6 +213,28 @@ public class PhotonController : Photon.PunBehaviour
     {
         this.Finish.SetActive(true);
         StopCoroutine(blockSpawnCoroutine);
+        GameStarted = false;
+
+        if ((int) this.roomCustomProperties[myName] > (int) this.roomCustomProperties[otherName])
+        {
+            this.ResultLabel.text = "YOU WIN!";
+        } else if ((int)this.roomCustomProperties[myName] < (int)this.roomCustomProperties[otherName])
+        {
+            this.ResultLabel.text = "YOU LOSE!";
+        } else
+        {
+            this.ResultLabel.text = "DRAW GAME!";
+        }
+
+    }
+    #endregion
+
+    #region Events
+    [PunRPC]
+    void StartClockCountDown()
+    {
+        clockCoroutine = StartClock();
+        StartCoroutine(clockCoroutine);
     }
     #endregion
 
@@ -183,6 +245,7 @@ public class PhotonController : Photon.PunBehaviour
         {
             yield return new WaitForSeconds(waitTime);
             GameObject block = Instantiate(Prefab, new Vector3(UnityEngine.Random.Range(-8f, 8f), UnityEngine.Random.Range(-4f, 4f), -1), transform.rotation);
+            prefabs.Add(block);
             StartCoroutine(DestroyBlock(block));
         }
     }
@@ -190,6 +253,7 @@ public class PhotonController : Photon.PunBehaviour
     private IEnumerator DestroyBlock(GameObject block)
     {
         yield return new WaitForSeconds(LifeTime);
+        prefabs.Remove(block);
         Destroy(block);
     }
 
