@@ -24,18 +24,22 @@ public class PhotonController : Photon.PunBehaviour
     public Button JoinRoomButton;
     public Button StartButton;
 
+    public InputField nameInput;
+
     public Text WaitingLabel;
     public Text MyScoreLabel;
     public Text OtherScoreLabel;
     public Text Clock;
     public Text ResultLabel;
+    public Text MyName;
+    public Text OtherName;
 
     public float SpawnTime;
     public float LifeTime;
     public int GameTime;
 
-    public string myName;
-    public string otherName;
+    public string myID;
+    public string otherID;
 
     public bool GameStarted;
 
@@ -85,14 +89,16 @@ public class PhotonController : Photon.PunBehaviour
             WaitingLabel.enabled = false;
             StartButton.interactable = true;
             StartButtonGO.SetActive(true);
-            myName = PLAYER_2;
-            otherName = PLAYER_1;
+            myID = PLAYER_2;
+            otherID = PLAYER_1;            
         }
         else
         {
-            myName = PLAYER_1;
-            otherName = PLAYER_2;
+            myID = PLAYER_1;
+            otherID = PLAYER_2;
         }
+        roomCustomProperties[myID + "name"] = nameInput.text;
+        PhotonNetwork.room.SetCustomProperties(roomCustomProperties);
     }
 
     public override void OnPhotonPlayerConnected(PhotonPlayer newPlayer)
@@ -104,13 +110,14 @@ public class PhotonController : Photon.PunBehaviour
 
     public override void OnPhotonCustomRoomPropertiesChanged(PhotonHashtable propertiesThatChanged)
     {
+        Debug.Log(roomCustomProperties.ToStringFull());
         foreach (DictionaryEntry pair in propertiesThatChanged)
         {
             roomCustomProperties[pair.Key] = pair.Value;
         }
 
 
-        if (!String.IsNullOrEmpty(myName))
+        if (!String.IsNullOrEmpty(myID))
         {
             SetScore();
         }
@@ -122,6 +129,9 @@ public class PhotonController : Photon.PunBehaviour
             PlacarLabel.SetActive(true);
             StartButtonGO.SetActive(false);
             WaitReady.SetActive(false);
+
+            MyName.text = roomCustomProperties[myID + "name"].ToString();
+            OtherName.text = roomCustomProperties[otherID + "name"].ToString();
 
             blockSpawnCoroutine = InstantateBlock(SpawnTime);
             StartCoroutine(blockSpawnCoroutine);
@@ -168,7 +178,11 @@ public class PhotonController : Photon.PunBehaviour
     #region Button Methods
     public void FindRoom()
     {
-        PhotonNetwork.JoinRandomRoom();
+        if (!String.IsNullOrEmpty(nameInput.text))
+        {
+            JoinRoomButton.interactable = false;
+            PhotonNetwork.JoinRandomRoom();
+        }
     }
 
     public void ImReady()
@@ -190,14 +204,16 @@ public class PhotonController : Photon.PunBehaviour
     #region Game Flow Methods
     private void SetScore()
     {
-        MyScoreLabel.text = roomCustomProperties[myName].ToString();
-        OtherScoreLabel.text = roomCustomProperties[otherName].ToString();
+        MyScoreLabel.text = roomCustomProperties[myID].ToString();
+        OtherScoreLabel.text = roomCustomProperties[otherID].ToString();
     }
 
     public void Point()
     {
-        roomCustomProperties[myName] = (int)roomCustomProperties[myName] + 1;
+        roomCustomProperties[myID] = (int)roomCustomProperties[myID] + 1;
         PhotonNetwork.room.SetCustomProperties(roomCustomProperties);
+
+        PhotonNetwork.RaiseEvent(0, myID,false,null);
     }
 
     private void SetupRoom()
@@ -207,8 +223,11 @@ public class PhotonController : Photon.PunBehaviour
         PhotonHashtable customProperties = new PhotonHashtable();
         customProperties[PLAYER_1] = 0;
         customProperties[PLAYER_2] = 0;
+        customProperties[PLAYER_1 + "name"] = "";
+        customProperties[PLAYER_2 + "name"] = "";
         customProperties[PLAYERS_READY] = 0;
         options.CustomRoomProperties = customProperties;
+       // options.Plugins = new string[] { "BlockBreakerPlugin" };
         PhotonNetwork.CreateRoom("", options, TypedLobby.Default);
     }
 
@@ -223,11 +242,11 @@ public class PhotonController : Photon.PunBehaviour
         StopCoroutine(blockSpawnCoroutine);
         GameStarted = false;
 
-        if ((int)roomCustomProperties[myName] > (int)roomCustomProperties[otherName])
+        if ((int)roomCustomProperties[myID] > (int)roomCustomProperties[otherID])
         {
             ResultLabel.text = "YOU WIN!";
         }
-        else if ((int)roomCustomProperties[myName] < (int)roomCustomProperties[otherName])
+        else if ((int)roomCustomProperties[myID] < (int)roomCustomProperties[otherID])
         {
             ResultLabel.text = "YOU LOSE!";
         }
